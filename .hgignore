@@ -8,3 +8,14 @@ staticfiles/
 .env
 *secret*.json
 dist/
+.git/
+.hg-private-archive/
+
+# Local configuration and this department's deployment. Never tracked here:
+# this repository is mirrored to a public GitHub repository through hg-git.
+rooms.json
+rooms.json.before-*
+deploy/
+publish.sh
+DEPLOYMENT.md
+CLAUDE.md
