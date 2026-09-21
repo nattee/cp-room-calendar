@@ -1,0 +1,10 @@
+syntax: glob
+.venv/
+.private/
+__pycache__/
+*.pyc
+staticfiles/
+*.sqlite3*
+.env
+*secret*.json
+dist/

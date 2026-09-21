@@ -1,0 +1,119 @@
+{% load static %}
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#103c35">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>CP Rooms · ตารางการใช้ห้อง</title>
+  <link rel="icon" href="{% static 'icon.svg' %}" type="image/svg+xml">
+  <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
+  <link rel="stylesheet" href="{% static 'app.css' %}">
+  {% if request.user.is_authenticated %}<script src="{% static 'app.js' %}" defer></script>{% endif %}
+</head>
+<body{% if request.user.is_authenticated %} class="signed-in"{% endif %}>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="CP Rooms home"><span class="brand-icon" aria-hidden="true">▦</span><span>CP <strong>Rooms</strong></span></a>
+      <span class="department">COMPUTER ENGINEERING<br>CHULALONGKORN UNIVERSITY</span>
+
+    </header>
+    {% if request.user.is_authenticated %}
+    <main class="viewer" id="viewer">
+      <section class="room-header" aria-labelledby="room-name">
+        <div class="eyebrow">ตารางการใช้ห้อง <span>ROOM CALENDAR</span></div>
+        <div class="room-heading"><h1 id="room-name">กำลังโหลดห้อง…</h1></div>
+        <div class="room-picker"><label for="room-select">ห้อง / Room</label><select id="room-select"></select><span id="room-count" class="muted"></span></div>
+        <div class="view-switch" role="group" aria-label="รูปแบบการแสดงผล / Calendar view">
+          <button id="day-view" type="button" aria-pressed="true">รายวัน <span>Day</span></button>
+          <button id="month-view" type="button" aria-pressed="false">ปฏิทิน <span>Month</span></button>
+          <button id="all-view" type="button" aria-pressed="false">ทุกห้อง <span>All rooms</span></button>
+        </div>
+        <p class="room-name-note" id="room-name-note" role="status" hidden></p>
+        <div class="availability" id="availability" aria-live="polite"><span class="status-dot"></span><span id="availability-text">กำลังตรวจสอบ / Checking availability</span></div>
+        <div class="booking" id="booking" hidden>
+          <a class="book-button" id="book" target="_blank" rel="noopener">จองใน Google Calendar <span>Book in Google Calendar</span></a>
+          <p class="book-note">บันทึกลงในปฏิทินห้องโดยตรง ตรวจสอบเวลาซ้ำก่อนบันทึก / Saves onto the room's own calendar. Check for a clash before saving.</p>
+        </div>
+      </section>
+      <section class="schedule" aria-label="ตารางการใช้ห้อง / Room schedule">
+        <div class="date-toolbar compact-date-toolbar">
+          <button class="icon-button" id="prev-day" aria-label="วันก่อนหน้า / Previous day">‹</button>
+          <div class="date-title"><div class="eyebrow" id="schedule-label">ตารางประจำวัน</div><h2><button id="date-heading" aria-expanded="false" aria-controls="date-controls" title="เลือกวันที่ / Choose date">วันนี้ / Today</button></h2></div>
+          <button class="icon-button" id="next-day" aria-label="วันถัดไป / Next day">›</button>
+          <button class="quiet" id="today">วันนี้</button>
+        </div>
+        <div class="date-controls" id="date-controls" hidden>
+          <label class="date-label"><span class="sr-only">เลือกวันที่ / Choose date</span><input type="date" id="date" min="2000-01-01" max="2100-12-31" required></label>
+        </div>
+        <div class="notice" id="notice" role="status" hidden></div>
+        <form id="reconnect" action="{% url 'signin' %}" method="post" hidden>{% csrf_token %}<button class="primary">เชื่อมต่อ Google อีกครั้ง / Reconnect</button></form>
+        <div class="schedule-body">
+        <div id="month-calendar" class="month-calendar" hidden>
+          <div id="calendar-scroll" class="calendar-scroll" tabindex="0" role="region" aria-label="ปฏิทิน เลื่อนด้านข้างเมื่อขยาย / Calendar, scroll sideways when zoomed">
+          <div id="calendar-canvas" class="calendar-canvas" data-zoom="0" data-text="100">
+          <div class="calendar-weekdays" aria-hidden="true"><span>จ.</span><span>อ.</span><span>พ.</span><span>พฤ.</span><span>ศ.</span><span>ส.</span><span>อา.</span></div>
+          <div id="month-days" class="month-days" role="group" aria-label="เลือกวันเพื่อดูรายการจอง / Choose a day" aria-busy="true"></div>
+          </div></div>
+          <p class="calendar-hint">แตะวันเพื่อดูทั้งหมด · + คือรายการเพิ่มเติม</p>
+        </div>
+        <section id="all-rooms" class="all-rooms" aria-label="ทุกห้องในวันเดียว / Every room for one day" hidden>
+          <div class="all-switch" role="group" aria-label="รูปแบบการแสดงผลทุกห้อง / All-rooms layout">
+            <button id="all-grid" type="button" aria-pressed="true">ตาราง <span>Grid</span></button>
+            <button id="all-list" type="button" aria-pressed="false">รายการ <span>List</span></button>
+          </div>
+          <div id="all-body" aria-live="polite" aria-busy="true"></div>
+        </section>
+        <section class="day-details" aria-label="รายการวันที่เลือก / Selected day bookings">
+          <h3 id="selected-day-heading" class="selected-day-heading"></h3>
+        <div id="event-list" class="event-list" aria-live="polite" aria-busy="true"></div>
+        </section></div>
+        <div class="schedule-footer"><span id="updated">กำลังโหลด / Loading…</span><span id="event-count"></span></div>
+      </section>
+    </main>
+    <nav class="room-nav" aria-label="เปลี่ยนห้อง / Switch rooms">
+      <button id="prev-room"><span aria-hidden="true">←</span><span>ห้องก่อนหน้า<small>Previous room</small></span></button>
+      <div id="room-dots" aria-hidden="true"></div><button id="open-settings" aria-haspopup="dialog">⚙ ตั้งค่า<small>Settings</small></button>
+      <button id="next-room"><span>ห้องถัดไป<small>Next room</small></span><span aria-hidden="true">→</span></button>
+    </nav>
+    <dialog id="settings-panel" aria-labelledby="settings-title">
+      <div class="settings-heading"><h2 id="settings-title">ตั้งค่า / Settings</h2><button id="close-settings" class="quiet" autofocus>เสร็จ / Done</button></div>
+      <div class="period-legend"><span class="period-am">ก่อน 12:00</span><span class="period-pm">12:00–15:59</span><span class="period-evening">ตั้งแต่ 16:00</span><span class="period-allday">ทั้งวัน</span></div>
+      <p class="settings-note">สีตามเวลาเริ่ม / Colors follow start time.</p>
+      <p class="settings-note">ขนาดปฏิทินรายเดือน · แตะ % เพื่อคืนค่า / Tap % to reset</p>
+          <div class="calendar-zoom" role="group" aria-label="ขยายปฏิทิน / Calendar zoom">
+            <span>ความกว้าง / Width</span>
+            <button id="zoom-out" aria-label="ย่อ / Zoom out">−</button>
+            <button id="zoom-reset" aria-label="พอดีหน้าจอ / Fit calendar">100%</button>
+            <button id="zoom-in" aria-label="ขยาย / Zoom in">+</button>
+          </div>
+          <div class="calendar-zoom" role="group" aria-label="ขนาดตัวอักษร / Event text size">
+            <span>ตัวอักษร / Text</span>
+            <button id="text-out" aria-label="ลดขนาดตัวอักษร / Smaller text">A−</button>
+            <button id="text-reset" aria-label="คืนขนาดตัวอักษร / Reset text size">100%</button>
+            <button id="text-in" aria-label="เพิ่มขนาดตัวอักษร / Larger text">A+</button>
+          </div>
+      <div class="settings-actions"><button class="quiet refresh" id="refresh">↻ <span>รีเฟรช / Refresh</span></button><button class="quiet" id="fullscreen" hidden>⛶ เต็มหน้าจอ / Full screen</button></div>
+      <div class="settings-account"><span>บัญชี / Account</span><p>{{ request.user.email }}</p>
+      <form action="{% url 'signout' %}" method="post">{% csrf_token %}<button class="quiet signout">ออกจากระบบ / Sign out</button></form></div>
+    </dialog>
+    {{ rooms|json_script:'rooms-data' }}
+    <noscript><p class="notice">กรุณาเปิด JavaScript เพื่อดูตารางห้อง / Enable JavaScript to view calendars.</p></noscript>
+    {% else %}
+    <main class="welcome">
+      <div class="welcome-copy"><div class="eyebrow">A LITTLE LESS SEARCHING. A LITTLE MORE SPACE.</div>
+        <h1>ห้องไหนว่าง<br><span>ดูได้ที่นี่</span></h1>
+        <p class="welcome-english">Find your next space.</p>
+        <p class="intro">ดูตารางการใช้ห้องภาควิชาฯ ในที่เดียว<br>เลือกห้อง เลือกวัน แล้ววางแผนได้เลย</p>
+        <form action="{% url 'signin' %}" method="post">{% csrf_token %}<button class="google-button"><span class="google-g" aria-hidden="true">G</span> Sign in with Google</button></form>
+        <p class="account-note">ใช้บัญชี <strong>@{{ domain }}</strong><br>ดูข้อมูลเท่านั้น · ไม่มีการแก้ไขปฏิทิน</p>
+      </div>
+      <div class="welcome-art" aria-hidden="true"><div class="art-top"><span>CP ROOMS</span><span>▦</span></div><div class="art-title">Space to<br>make things<br><em>happen.</em></div><div class="art-grid"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="art-bottom">ห้องเรียน · ห้องประชุม · พื้นที่ทำงาน</div></div>
+    </main>
+    <footer class="welcome-footer">ภาควิชาวิศวกรรมคอมพิวเตอร์ · จุฬาลงกรณ์มหาวิทยาลัย</footer>
+    {% endif %}
+  </div>
+</body>
+</html>

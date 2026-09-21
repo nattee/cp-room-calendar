@@ -1,0 +1,21 @@
+.venv/
+.private/
+__pycache__/
+*.pyc
+staticfiles/
+*.sqlite3*
+.env
+*secret*.json
+.pytest_cache/
+dist/
+
+# Mercurial's own store holds every tracked file, including the ones below
+.hg/
+
+# Site-specific: real room calendar IDs and this department's deployment
+rooms.json
+rooms.json.before-*
+deploy/
+publish.sh
+DEPLOYMENT.md
+CLAUDE.md
